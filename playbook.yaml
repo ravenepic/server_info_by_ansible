@@ -4,6 +4,30 @@
   become: true
   tasks:
 
+    - name: Change SSH port from 22 to 5190
+      ansible.builtin.replace:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Port\s+22'
+        replace: 'Port 5190'
+
+    - name: Disable password authentication
+      ansible.builtin.replace:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication\s+yes'
+        replace: 'PasswordAuthentication no'
+
+    - name: Disable root login
+      ansible.builtin.replace:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PermitRootLogin\s+yes'
+        replace: 'PermitRootLogin no'
+
+    - name: Reload systemd and restart ssh.socket
+      ansible.builtin.systemd:
+        name: ssh.socket
+        state: restarted
+        daemon_reload: yes
+
     - name: Check if ports are open
       ansible.builtin.shell: "ss -tulnp | awk 'NR>1 {print $1,$5,$7}' | column -t "
       register: open_ports
