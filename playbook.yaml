@@ -1,0 +1,103 @@
+---
+- name: Playbook for checking system information
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Check if ports are open
+      ansible.builtin.shell: "ss -tulnp | awk 'NR>1 {print $1,$5,$7}' | column -t "
+      register: open_ports
+      tags:
+        - check-open-port
+
+    - name: Display open ports
+      ansible.builtin.debug:
+        var: open_ports.stdout_lines
+      tags:
+        - check-open-port
+
+    - name: List running services
+      ansible.builtin.command: "systemctl list-units --type=service --state=running"
+      register: running_services
+      tags:
+        - running-service
+
+    - name: Display running services
+      ansible.builtin.debug:
+        var: running_services.stdout_lines
+      tags:
+        - running-service
+
+    - name: Get system users
+      ansible.builtin.shell: "awk -F: '$3 < 1000 {print $1}' /etc/passwd"
+      register: system_users
+      changed_when: false
+      tags:
+        - user-list
+
+    - name: Get normal users
+      ansible.builtin.shell: "awk -F: '$3 >= 1000 {print $1}' /etc/passwd"
+      register: normal_users
+      changed_when: false
+      tags:
+        - user-list
+
+    - name: Show system users
+      ansible.builtin.debug:
+        var: system_users.stdout_lines
+      tags:
+        - user-list
+
+    - name: Show normal users
+      ansible.builtin.debug:
+        var: normal_users.stdout_lines
+      tags:
+        - user-list
+
+    - name: List mounted devices
+      ansible.builtin.shell: "mount | grep /mnt"
+      register: mounted_devices
+      tags:
+        - mounted-list
+
+    - name: Display mounted devices
+      ansible.builtin.debug:
+        var: mounted_devices.stdout_lines
+      tags:
+        - mounted-list
+
+    - name: List enabled services
+      ansible.builtin.command: "systemctl list-unit-files --type=service --state=enabled"
+      register: enabled_services
+      tags:
+        - enabled-service
+
+    - name: Display enabled services
+      ansible.builtin.debug:
+        var: enabled_services.stdout_lines
+      tags:
+        - enabled-service
+
+    - name: Check user crontab entries
+      shell: crontab -l
+      register: user_crontab
+      changed_when: false
+      failed_when: false
+      tags: crontab
+
+    - name: Show user crontab jobs
+      debug:
+        msg: "{{ user_crontab.stdout_lines | default(['No user crontab entries found']) }}"
+      tags: crontab
+
+    - name: Check system-wide cron jobs
+      shell: ls -l /etc/cron.* /etc/crontab 2>/dev/null
+      register: system_cron_files
+      changed_when: false
+      failed_when: false
+      tags: crontab
+
+    - name: Show system-wide cron job files
+      debug:
+        msg: "{{ system_cron_files.stdout_lines | default(['No system-wide cron jobs found']) }}"
+      tags: crontab
